@@ -350,12 +350,16 @@ int manager_connect(Manager *m) {
         manager_disconnect(m);
 
         r = manager_open_network_socket(m);
-        if (r < 0)
+        if (r < 0) {
+		log_error("Failed to manager_open_network_socket, %d", r);
                 return r;
+	}
 
         r = manager_journal_monitor_listen(m);
-        if (r < 0)
+        if (r < 0) {
+		log_error("Failed to manager_journal_monitor_listen, %d", r);
                 return r;
+	}
 
         return 0;
 }
