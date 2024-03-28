@@ -106,6 +106,9 @@ int manager_push_to_network(Manager *m,
 
         makepri = (facility << 3) + severity;
 
+#ifdef RFC5424
+	// <35>1 2013-10-11T22:14:15.003Z client_machine su - - - 'su root' failed for joe on /dev/pts/2
+	//
         /* First: priority field Second: Version  '<pri>version' */
         snprintf(header_priority, sizeof(header_priority), "<%i>%i ", makepri, RFC_5424_PROTOCOL);
         IOVEC_SET_STRING(iov[n++], header_priority);
@@ -152,6 +155,47 @@ int manager_push_to_network(Manager *m,
 
         /* Ninth: message */
         IOVEC_SET_STRING(iov[n++], message);
+#else
+	// OLD STYLE rfc3339 logs
+	//
+	// <35>Oct 12 22:14:15 client_machine su: 'su root' failed for joe on /dev/pts/2
+
+        /* First: priority field '<pri>' */
+        snprintf(header_priority, sizeof(header_priority), "<%i>", makepri);
+        IOVEC_SET_STRING(iov[n++], header_priority);
+
+        /* Third: timestamp */
+	// TODO not the right timestamp format.
+        format_rfc3339_timestamp(tv, header_time, sizeof(header_time));
+        IOVEC_SET_STRING(iov[n++], header_time);
+
+        /* Fourth: hostname */
+        if (hostname)
+                IOVEC_SET_STRING(iov[n++], hostname);
+        else
+                IOVEC_SET_STRING(iov[n++], RFC_5424_NILVALUE);
+
+        IOVEC_SET_STRING(iov[n++], " ");
+
+        /* Fifth: identifier */
+        if (identifier)
+                IOVEC_SET_STRING(iov[n++], identifier);
+        else
+                IOVEC_SET_STRING(iov[n++], RFC_5424_NILVALUE);
+
+        IOVEC_SET_STRING(iov[n++], "[");
+
+        /* Sixth: procid */
+        if (pid)
+                IOVEC_SET_STRING(iov[n++], pid);
+        else
+                IOVEC_SET_STRING(iov[n++], RFC_5424_NILVALUE);
+
+        IOVEC_SET_STRING(iov[n++], "]: ");
+
+        /* Ninth: message */
+        IOVEC_SET_STRING(iov[n++], message);
+#endif
 
         /* Tenth: Optional newline message separator, if not implicitly terminated by end of UDP frame
          * De facto standard: separate messages by a newline
